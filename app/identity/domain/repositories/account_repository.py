@@ -1,0 +1,13 @@
+from typing import Protocol
+from uuid import UUID
+
+from app.identity.domain.entities.account import Account
+from app.identity.domain.value_objects.cpf import CPF
+from app.identity.domain.value_objects.email import Email
+
+
+class AccountRepository(Protocol):
+    def find_by_id(self, account_id: UUID) -> Account | None: ...
+    def find_by_email(self, email: Email) -> Account | None: ...
+    def find_by_tax_id(self, tax_id: CPF) -> Account | None: ...
+    def save(self, account: Account) -> None: ...
