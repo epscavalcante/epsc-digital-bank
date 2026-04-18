@@ -16,11 +16,17 @@ dev = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
-addopts = "-ra -q --cov=app --cov-report=term-missing"
+addopts = [
+  "-ra",
+  "-q",
+  "--cov=app",
+  "--cov-report=term-missing",
+  "--cov-fail-under=60",
+]
 
 [tool.taskipy.tasks]
 test = "pytest"
-cov = "pytest --cov=app --cov-report=html --cov-report=term"
+cov = "pytest --cov-report=xml"
 lint = "ruff check ."
 format = "ruff format ."
 check = "ruff check . && mypy . && pytest"
