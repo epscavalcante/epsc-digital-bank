@@ -1,0 +1,9 @@
+services:
+  app:
+    build: .
+    container_name: epsc-digital-bank-app
+    volumes:
+      - .:/app
+    stdin_open: true
+    tty: true
+    command: tail -f /dev/null

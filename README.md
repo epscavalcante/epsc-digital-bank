@@ -3,3 +3,36 @@
 O **EPSC Digital Bank** é um motor de transações financeiras (Core Banking) desenvolvido para demonstrar padrões de arquitetura de alta resiliência, consistência transacional e isolamento de domínio.
 
 O projeto foca no desafio de transferências entre contas (P2P), garantindo que o dinheiro nunca seja "perdido" ou "duplicado" em cenários de alta concorrência.
+
+## Escopo inicial
+
+Precisa ser pequeno o suficiente para ser implementável, mas robusto o suficiente para não gerar uma arquitetura descartável.
+
+1. Funcionalidades do MVP:
+* Cadastro de usuário
+* Criação automática de conta financeira
+* Consulta de saldo
+* Consulta de extrato
+* Transferência entre contas internas
+* Histórico de transferências
+* Idempotência para requisições
+* Auditoria de ações críticas
+* Observabilidade básica
+* Eventos de domínio internos
+* Fora do MVP inicialmente
+
+2. Principais regras de negócio
+
+Essas regras precisam estar explícitas logo cedo porque elas afetam domínio, banco, concorrência e testes.
+
+* Uma conta só pode transferir se estiver ativa
+* Não pode transferir para si mesmo
+* Valor precisa ser maior que zero
+* Conta de origem precisa ter saldo suficiente
+* Uma transferência deve ser processada uma única vez
+* Repetições da mesma requisição com a mesma idempotency key devem retornar o mesmo resultado
+* Toda transferência precisa gerar pelo menos dois lançamentos contábeis: ** débito na conta origem**, ** crédito na conta destino**
+* O sistema nunca pode permitir que apenas um lado da transação seja persistido
+* Saldo disponível nunca deve ser alterado manualmente sem lançamento no ledger
+* Toda falha de processamento deve ser auditável
+* Toda operação financeira deve possuir rastreabilidade ponta a ponta
