@@ -1,6 +1,8 @@
+from decimal import Decimal
 from unittest.mock import MagicMock
 from uuid import UUID
 
+from app.banking.domain.value_objects.money import Money
 import pytest
 
 from app.identity.application.exceptions.account_already_exists_exception import (
@@ -63,6 +65,7 @@ class TestSignup:
             tax_id=CPF(value=self.VALID_CPF),
             name=Name(value="Existing User"),
             email=Email(value="existing@example.com"),
+            balance=Money(amount=Decimal(0)),
         )
         mock_account_repository.find_by_tax_id.return_value = existing_account
 
@@ -91,6 +94,7 @@ class TestSignup:
             tax_id=CPF(value=self.VALID_CPF),
             name=Name(value="Existing User"),
             email=Email(value="john@example.com"),
+            balance=Money(amount=Decimal(0)),
         )
         mock_account_repository.find_by_email.return_value = existing_account
 
@@ -120,6 +124,7 @@ class TestSignup:
             tax_id=CPF(value=self.VALID_CPF),
             name=Name(value="John Doe"),
             email=Email(value="john@example.com"),
+            balance=Money(amount=Decimal(0)),
         )
         mock_account_repository.create.return_value = created_account
 
