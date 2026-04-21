@@ -37,7 +37,7 @@ class Signup:
             email=input_data.email,
         )
 
-        account = self.account_repository.create(account)
+        self.account_repository.save(account)
 
         return SignupOutput(
             account_id=account.id,

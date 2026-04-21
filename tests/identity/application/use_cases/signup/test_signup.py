@@ -10,7 +10,6 @@ from app.identity.application.use_cases.signup.signup import Signup
 from app.identity.application.use_cases.signup.signup_input import SignupInput
 from app.identity.application.use_cases.signup.signup_output import SignupOutput
 from app.identity.domain.entities.account import Account
-from app.identity.domain.repositories.account_repository import AccountRepository
 from app.identity.domain.value_objects.cpf import CPF
 from app.identity.domain.value_objects.email import Email
 from app.identity.domain.value_objects.name import Name
@@ -39,14 +38,6 @@ class TestSignup:
         mock_account_repository.find_by_tax_id.return_value = None
         mock_account_repository.find_by_email.return_value = None
 
-        created_account = Account(
-            account_id=UUID("12345678-1234-1234-1234-123456789012"),
-            tax_id=CPF(value=self.VALID_CPF),
-            name=Name(value="John Doe"),
-            email=Email(value="john@example.com"),
-        )
-        mock_account_repository.create.return_value = created_account
-
         input_data = SignupInput(
             tax_id=self.VALID_CPF,
             name="John Doe",
@@ -58,10 +49,10 @@ class TestSignup:
 
         # Assert
         assert isinstance(result, SignupOutput)
-        assert result.account_id == created_account._account_id
+        assert result.account_id is not None
         mock_account_repository.find_by_tax_id.assert_called_once()
         mock_account_repository.find_by_email.assert_called_once()
-        mock_account_repository.create.assert_called_once()
+        mock_account_repository.save.assert_called_once()
 
     def test_signup_raises_exception_when_cpf_already_exists(
         self, signup: Signup, mock_account_repository: MagicMock

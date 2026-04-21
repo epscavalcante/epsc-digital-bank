@@ -1,6 +1,5 @@
 from uuid import UUID
 
-import pytest
 
 from app.identity.domain.entities.account import Account
 from app.identity.domain.value_objects.cpf import CPF
