@@ -25,7 +25,7 @@ class LedgerEntryRepository(Protocol):
         transaction_id: UUID,
     ) -> list[LedgerEntry]: ...
 
-    def find_by_account_id(
+    def find_by_wallet_id(
         self,
-        account_id: UUID,
+        wallet_id: UUID,
     ) -> list[LedgerEntry]: ...

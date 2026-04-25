@@ -1,9 +1,7 @@
-from decimal import Decimal
 from uuid import UUID
 
 from uuid6 import uuid7
 
-from app.banking.domain.value_objects.money import Money
 from app.identity.domain.enums.account_status import AccountStatus
 from app.identity.domain.value_objects.cpf import CPF
 from app.identity.domain.value_objects.email import Email
@@ -17,7 +15,6 @@ class Account:
         tax_id: CPF,
         name: Name,
         email: Email,
-        balance: Money,
         status: AccountStatus = AccountStatus.ACTIVE,
     ) -> None:
         self._account_id = account_id
@@ -25,7 +22,6 @@ class Account:
         self._tax_id = tax_id
         self._email = email
         self._status = status
-        self._balance = balance
 
     # --- Propriedades (Getters) ---
 
@@ -50,27 +46,6 @@ class Account:
     def tax_id(self) -> CPF:
         return self._tax_id
 
-    def can_deposit_funds(self) -> bool:
-        return self._status == AccountStatus.ACTIVE
-
-    def can_receive_funds(self) -> bool:
-        return self._status in [
-            AccountStatus.ACTIVE,
-            AccountStatus.BLOCKED,
-        ]
-
-    def can_transfer_funds(self) -> bool:
-        return self._status == AccountStatus.ACTIVE
-
-    def deposit(self, amount: Money) -> None:
-        self._balance = self._balance.add(amount)
-
-    @property
-    def balance(self) -> Money:
-        return self._balance
-
-    # --- Métodos de Fábrica ---
-
     @classmethod
     def create(
         cls,
@@ -83,7 +58,6 @@ class Account:
             tax_id=CPF(value=tax_id),
             name=Name(value=name),
             email=Email(value=email),
-            balance=Money(amount=Decimal(0)),
         )
 
     @classmethod
@@ -99,7 +73,6 @@ class Account:
             tax_id=CPF(value=tax_id),
             name=Name(value=name),
             email=Email(value=email),
-            balance=Money(amount=Decimal(0)),
         )
 
     @property
@@ -107,7 +80,6 @@ class Account:
         return self._status
 
     def __eq__(self, other: object) -> bool:
-        # No DDD, entidades são iguais se seus IDs forem iguais
         if not isinstance(other, Account):
             return False
         return self._account_id == other._account_id

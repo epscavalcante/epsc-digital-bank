@@ -1,8 +1,6 @@
-from decimal import Decimal
 from unittest.mock import MagicMock
 from uuid import UUID
 
-from app.banking.domain.value_objects.money import Money
 import pytest
 
 from app.identity.application.exceptions.account_already_exists_exception import (
@@ -28,9 +26,20 @@ class TestSignup:
         return mock
 
     @pytest.fixture
-    def mock_unit_of_work(self, mock_account_repository: MagicMock) -> MagicMock:
+    def mock_wallet_repository(self) -> MagicMock:
+        mock = MagicMock()
+        mock.save.return_value = None
+        return mock
+
+    @pytest.fixture
+    def mock_unit_of_work(
+        self,
+        mock_account_repository: MagicMock,
+        mock_wallet_repository: MagicMock,
+    ) -> MagicMock:
         mock = MagicMock()
         mock.account_repository = mock_account_repository
+        mock.wallet_repository = mock_wallet_repository
         mock.__enter__.return_value = mock
         mock.__exit__.return_value = None
         return mock
@@ -64,6 +73,7 @@ class TestSignup:
         mock_account_repository.find_by_tax_id.assert_called_once()
         mock_account_repository.find_by_email.assert_called_once()
         mock_account_repository.save.assert_called_once()
+        mock_unit_of_work.wallet_repository.save.assert_called_once()
         mock_unit_of_work.commit.assert_called_once()
 
     def test_signup_raises_exception_when_cpf_already_exists(
@@ -78,7 +88,6 @@ class TestSignup:
             tax_id=CPF(value=self.VALID_CPF),
             name=Name(value="Existing User"),
             email=Email(value="existing@example.com"),
-            balance=Money(amount=Decimal(0)),
         )
         mock_account_repository.find_by_tax_id.return_value = existing_account
 
@@ -111,7 +120,6 @@ class TestSignup:
             tax_id=CPF(value=self.VALID_CPF),
             name=Name(value="Existing User"),
             email=Email(value="john@example.com"),
-            balance=Money(amount=Decimal(0)),
         )
         mock_account_repository.find_by_email.return_value = existing_account
 

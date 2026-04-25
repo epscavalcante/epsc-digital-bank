@@ -10,12 +10,12 @@ from app.banking.domain.value_objects.money import Money
 class TestLedgerEntry:
     def test_create_credit_generates_uuid(self):
         transaction_id = uuid4()
-        account_id = uuid4()
+        wallet_id = uuid4()
         amount = Money(amount=Decimal("100.00"))
 
         entry = LedgerEntry.create_credit(
             transaction_id=transaction_id,
-            account_id=account_id,
+            wallet_id=wallet_id,
             amount=amount,
         )
 
@@ -23,28 +23,28 @@ class TestLedgerEntry:
 
     def test_create_credit_with_valid_data(self):
         transaction_id = uuid4()
-        account_id = uuid4()
+        wallet_id = uuid4()
         amount = Money(amount=Decimal("100.00"))
 
         entry = LedgerEntry.create_credit(
             transaction_id=transaction_id,
-            account_id=account_id,
+            wallet_id=wallet_id,
             amount=amount,
         )
 
         assert entry.transaction_id == transaction_id
-        assert entry.account_id == account_id
+        assert entry.wallet_id == wallet_id
         assert entry.entry_type == LedgerEntryType.CREDIT
         assert entry.amount == amount
 
     def test_create_debit_generates_uuid(self):
         transaction_id = uuid4()
-        account_id = uuid4()
+        wallet_id = uuid4()
         amount = Money(amount=Decimal("50.00"))
 
         entry = LedgerEntry.create_debit(
             transaction_id=transaction_id,
-            account_id=account_id,
+            wallet_id=wallet_id,
             amount=amount,
         )
 
@@ -52,46 +52,46 @@ class TestLedgerEntry:
 
     def test_create_debit_with_valid_data(self):
         transaction_id = uuid4()
-        account_id = uuid4()
+        wallet_id = uuid4()
         amount = Money(amount=Decimal("50.00"))
 
         entry = LedgerEntry.create_debit(
             transaction_id=transaction_id,
-            account_id=account_id,
+            wallet_id=wallet_id,
             amount=amount,
         )
 
         assert entry.transaction_id == transaction_id
-        assert entry.account_id == account_id
+        assert entry.wallet_id == wallet_id
         assert entry.entry_type == LedgerEntryType.DEBIT
         assert entry.amount == amount
 
     def test_ledger_entry_has_private_attributes(self):
         transaction_id = uuid4()
-        account_id = uuid4()
+        wallet_id = uuid4()
         amount = Money(amount=Decimal("100.00"))
 
         entry = LedgerEntry.create_credit(
             transaction_id=transaction_id,
-            account_id=account_id,
+            wallet_id=wallet_id,
             amount=amount,
         )
 
         assert hasattr(entry, "_ledger_entry_id")
         assert hasattr(entry, "_transaction_id")
-        assert hasattr(entry, "_account_id")
+        assert hasattr(entry, "_wallet_id")
         assert hasattr(entry, "_entry_type")
         assert hasattr(entry, "_amount")
         assert hasattr(entry, "_created_at")
 
     def test_ledger_entry_id_property(self):
         transaction_id = uuid4()
-        account_id = uuid4()
+        wallet_id = uuid4()
         amount = Money(amount=Decimal("100.00"))
 
         entry = LedgerEntry.create_credit(
             transaction_id=transaction_id,
-            account_id=account_id,
+            wallet_id=wallet_id,
             amount=amount,
         )
 
@@ -99,12 +99,12 @@ class TestLedgerEntry:
 
     def test_ledger_entry_created_at_is_datetime(self):
         transaction_id = uuid4()
-        account_id = uuid4()
+        wallet_id = uuid4()
         amount = Money(amount=Decimal("100.00"))
 
         entry = LedgerEntry.create_credit(
             transaction_id=transaction_id,
-            account_id=account_id,
+            wallet_id=wallet_id,
             amount=amount,
         )
 
@@ -112,12 +112,12 @@ class TestLedgerEntry:
 
     def test_ledger_entry_credit_type_is_credit(self):
         transaction_id = uuid4()
-        account_id = uuid4()
+        wallet_id = uuid4()
         amount = Money(amount=Decimal("100.00"))
 
         entry = LedgerEntry.create_credit(
             transaction_id=transaction_id,
-            account_id=account_id,
+            wallet_id=wallet_id,
             amount=amount,
         )
 
@@ -125,12 +125,12 @@ class TestLedgerEntry:
 
     def test_ledger_entry_debit_type_is_debit(self):
         transaction_id = uuid4()
-        account_id = uuid4()
+        wallet_id = uuid4()
         amount = Money(amount=Decimal("100.00"))
 
         entry = LedgerEntry.create_debit(
             transaction_id=transaction_id,
-            account_id=account_id,
+            wallet_id=wallet_id,
             amount=amount,
         )
 

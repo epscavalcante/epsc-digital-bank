@@ -1,4 +1,3 @@
-from decimal import Decimal
 from uuid import UUID
 
 import pytest
@@ -59,11 +58,16 @@ class TestSignupIntegration:
         # Verifica que a conta foi persistida no banco
         with unit_of_work as verify_uow:
             saved_account = verify_uow.account_repository.find_by_id(result.account_id)
+            saved_wallet = verify_uow.wallet_repository.find_by_account_id(
+                result.account_id
+            )
         assert saved_account is not None
+        assert saved_wallet is not None
         assert saved_account.name.value == "John Doe"
         assert saved_account.email.value == "john@example.com"
         assert saved_account.tax_id.value == self.VALID_CPF
         assert saved_account.status == AccountStatus.ACTIVE
+        assert saved_wallet.balance.currency == "BRL"
 
     def test_signup_finds_existing_account_by_tax_id(self, signup, unit_of_work):
         """Testa que o signup encontra conta existente pelo CPF."""
@@ -131,8 +135,8 @@ class TestSignupIntegration:
         assert saved_account.email.value == "john@example.com"  # Lowercase
         assert saved_account.name.value == "John Doe"  # Sem espaços
 
-    def test_signup_persists_balance_as_zero(self, signup, unit_of_work):
-        """Testa que o saldo inicial é persistido como zero."""
+    def test_signup_creates_wallet_with_zero_balance(self, signup, unit_of_work):
+        """Testa que a wallet inicial é criada com saldo zero."""
         # Arrange
         input_data = SignupInput(
             tax_id=self.VALID_CPF,
@@ -145,7 +149,9 @@ class TestSignupIntegration:
 
         # Assert
         with unit_of_work as verify_uow:
-            saved_account = verify_uow.account_repository.find_by_id(result.account_id)
-        assert saved_account is not None
-        assert saved_account.balance.amount == Decimal(0)
-        assert saved_account.balance.currency == "BRL"
+            saved_wallet = verify_uow.wallet_repository.find_by_account_id(
+                result.account_id
+            )
+        assert saved_wallet is not None
+        assert saved_wallet.balance.amount == 0
+        assert saved_wallet.balance.currency == "BRL"
