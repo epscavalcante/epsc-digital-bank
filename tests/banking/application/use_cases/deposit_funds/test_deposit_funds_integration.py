@@ -6,6 +6,7 @@ from app.banking.application.use_cases.deposit_funds.deposit_funds import Deposi
 from app.banking.application.use_cases.deposit_funds.deposit_funds_input import (
     DepositFundsInput,
 )
+from app.banking.domain.entities.wallet import Wallet
 from app.banking.domain.enums.ledger_entry_type import LedgerEntryType
 from app.banking.domain.enums.transaction_type import TransactionType
 from app.banking.domain.value_objects.money import Money
@@ -44,8 +45,10 @@ class TestDepositFundsIntegration:
             email="john@example.com",
             tax_id=self.VALID_CPF,
         )
+        wallet = Wallet.create(account_id=account.id)
         with unit_of_work as setup_uow:
             setup_uow.account_repository.save(account)
+            setup_uow.wallet_repository.save(wallet)
             setup_uow.commit()
 
         result = deposit_funds.execute(
@@ -57,7 +60,7 @@ class TestDepositFundsIntegration:
         )
 
         with unit_of_work as verify_uow:
-            saved_account = verify_uow.account_repository.find_by_id(account.id)
+            saved_wallet = verify_uow.wallet_repository.find_by_account_id(account.id)
             saved_transaction = verify_uow.transaction_repository.find_by_id(
                 result.transaction_id
             )
@@ -65,8 +68,8 @@ class TestDepositFundsIntegration:
                 result.transaction_id
             )
 
-        assert saved_account is not None
-        assert saved_account.balance.amount == Decimal("100.00")
+        assert saved_wallet is not None
+        assert saved_wallet.balance.amount == Decimal("100.00")
 
         assert saved_transaction is not None
         assert saved_transaction.type == TransactionType.DEPOSIT
@@ -76,7 +79,7 @@ class TestDepositFundsIntegration:
         assert len(saved_entries) == 1
         assert saved_entries[0].entry_type == LedgerEntryType.CREDIT
         assert saved_entries[0].amount.amount == Decimal("100.00")
-        assert saved_entries[0].account_id == account.id
+        assert saved_entries[0].wallet_id == wallet.id
 
     def test_deposit_funds_reuses_existing_transaction_when_idempotency_key_repeats(
         self,
@@ -88,8 +91,10 @@ class TestDepositFundsIntegration:
             email="john@example.com",
             tax_id=self.VALID_CPF,
         )
+        wallet = Wallet.create(account_id=account.id)
         with unit_of_work as setup_uow:
             setup_uow.account_repository.save(account)
+            setup_uow.wallet_repository.save(wallet)
             setup_uow.commit()
 
         first_result = deposit_funds.execute(
@@ -109,19 +114,19 @@ class TestDepositFundsIntegration:
         )
 
         with unit_of_work as verify_uow:
-            saved_account = verify_uow.account_repository.find_by_id(account.id)
+            saved_wallet = verify_uow.wallet_repository.find_by_account_id(account.id)
             saved_transaction = (
                 verify_uow.transaction_repository.find_by_idempotency_key(
                     "deposit-int-002"
                 )
             )
-            saved_entries = verify_uow.ledger_entry_repository.find_by_account_id(
-                account.id
+            saved_entries = verify_uow.ledger_entry_repository.find_by_wallet_id(
+                wallet.id
             )
 
         assert first_result.transaction_id == second_result.transaction_id
-        assert saved_account is not None
-        assert saved_account.balance.amount == Decimal("50.00")
+        assert saved_wallet is not None
+        assert saved_wallet.balance.amount == Decimal("50.00")
         assert saved_transaction is not None
         assert len(saved_entries) == 1
 
@@ -147,8 +152,10 @@ class TestDepositFundsIntegration:
             email="john@example.com",
             tax_id=self.VALID_CPF,
         )
+        wallet = Wallet.create(account_id=account.id)
         with setup_uow as uow:
             uow.account_repository.save(account)
+            uow.wallet_repository.save(wallet)
             uow.commit()
 
         failing_uow = FailingSqlAlchemyUnitOfWork(database)
@@ -165,13 +172,13 @@ class TestDepositFundsIntegration:
 
         verify_uow = SqlAlchemyUnitOfWork(database)
         with verify_uow as uow:
-            saved_account = uow.account_repository.find_by_id(account.id)
+            saved_wallet = uow.wallet_repository.find_by_account_id(account.id)
             saved_transaction = uow.transaction_repository.find_by_idempotency_key(
                 "deposit-int-003"
             )
-            saved_entries = uow.ledger_entry_repository.find_by_account_id(account.id)
+            saved_entries = uow.ledger_entry_repository.find_by_wallet_id(wallet.id)
 
-        assert saved_account is not None
-        assert saved_account.balance.amount == Decimal("0.00")
+        assert saved_wallet is not None
+        assert saved_wallet.balance.amount == Decimal("0.00")
         assert saved_transaction is None
         assert saved_entries == []

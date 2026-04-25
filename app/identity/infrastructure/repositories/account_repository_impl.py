@@ -1,10 +1,8 @@
-from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.banking.domain.value_objects.money import Money
 from app.identity.domain.entities.account import Account
 from app.identity.domain.enums.account_status import AccountStatus
 from app.identity.domain.repositories.account_repository import AccountRepository
@@ -50,10 +48,6 @@ class AccountRepositoryImpl(AccountRepository):
             tax_id=CPF(value=model.tax_id),
             name=Name(value=model.name),
             email=Email(value=model.email),
-            balance=Money(
-                amount=Decimal(model.balance_amount),
-                currency=model.balance_currency,
-            ),
             status=AccountStatus(model.status),
         )
 
@@ -63,7 +57,5 @@ class AccountRepositoryImpl(AccountRepository):
             tax_id=account.tax_id.value,
             name=account.name.value,
             email=account.email.value,
-            balance_amount=str(account.balance.amount),
-            balance_currency=account.balance.currency,
             status=account.status.value,
         )

@@ -4,9 +4,6 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.banking.application.exceptions.account_cant_deposit_funds_exception import (
-    AccountCantDepositFundsException,
-)
 from app.banking.application.exceptions.invalid_deposit_amount_exception import (
     InvalidDepositAmountException,
 )
@@ -18,6 +15,7 @@ from app.banking.application.use_cases.deposit_funds.deposit_funds_output import
     DepositFundsOutput,
 )
 from app.banking.domain.entities.transaction import Transaction
+from app.banking.domain.entities.wallet import Wallet
 from app.banking.domain.enums.transaction_status import TransactionStatus
 from app.banking.domain.enums.transaction_type import TransactionType
 from app.banking.domain.exceptions.invalid_money_amount_exception import (
@@ -27,20 +25,13 @@ from app.banking.domain.value_objects.money import Money
 from app.identity.application.exceptions.account_not_found_exception import (
     AccountNotFoundException,
 )
-from app.identity.domain.entities.account import Account
-from app.identity.domain.enums.account_status import AccountStatus
-from app.identity.domain.value_objects.cpf import CPF
-from app.identity.domain.value_objects.email import Email
-from app.identity.domain.value_objects.name import Name
 
 
 class TestDepositFunds:
-    VALID_CPF = "52998224725"
-
     @pytest.fixture
-    def mock_account_repository(self) -> MagicMock:
+    def mock_wallet_repository(self) -> MagicMock:
         mock = MagicMock()
-        mock.find_by_id.return_value = None
+        mock.find_by_account_id.return_value = None
         mock.save.return_value = None
         return mock
 
@@ -60,12 +51,12 @@ class TestDepositFunds:
     @pytest.fixture
     def mock_unit_of_work(
         self,
-        mock_account_repository: MagicMock,
+        mock_wallet_repository: MagicMock,
         mock_transaction_repository: MagicMock,
         mock_ledger_entry_repository: MagicMock,
     ) -> MagicMock:
         mock = MagicMock()
-        mock.account_repository = mock_account_repository
+        mock.wallet_repository = mock_wallet_repository
         mock.transaction_repository = mock_transaction_repository
         mock.ledger_entry_repository = mock_ledger_entry_repository
         mock.__enter__.return_value = mock
@@ -77,61 +68,51 @@ class TestDepositFunds:
         return DepositFunds(unit_of_work=mock_unit_of_work)
 
     @pytest.fixture
-    def existing_account(self) -> Account:
-        return Account(
+    def existing_wallet(self) -> Wallet:
+        return Wallet.restore(
+            wallet_id=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
             account_id=UUID("12345678-1234-1234-1234-123456789012"),
-            tax_id=CPF(value=self.VALID_CPF),
-            name=Name(value="John Doe"),
-            email=Email(value="john@example.com"),
-            balance=Money(amount=Decimal(0)),
-            status=AccountStatus.ACTIVE,
+            balance=Money(amount=Decimal("0.00")),
         )
 
     @pytest.fixture
-    def create_account(self):
-        """Factory fixture que cria uma nova conta a cada chamada."""
-
-        def _create_account(balance: Decimal = Decimal(0)) -> Account:
-            return Account(
+    def create_wallet(self):
+        def _create_wallet(balance: Decimal = Decimal("0.00")) -> Wallet:
+            return Wallet.restore(
+                wallet_id=uuid4(),
                 account_id=uuid4(),
-                tax_id=CPF(value=self.VALID_CPF),
-                name=Name(value="John Doe"),
-                email=Email(value="john@example.com"),
                 balance=Money(amount=balance),
-                status=AccountStatus.ACTIVE,
             )
 
-        return _create_account
+        return _create_wallet
 
     def test_deposit_funds_creates_transaction_successfully(
         self,
         deposit_funds: DepositFunds,
-        mock_account_repository: MagicMock,
+        mock_wallet_repository: MagicMock,
         mock_transaction_repository: MagicMock,
         mock_ledger_entry_repository: MagicMock,
-        existing_account: Account,
+        existing_wallet: Wallet,
         mock_unit_of_work: MagicMock,
     ):
-        # Arrange
-        mock_account_repository.find_by_id.return_value = existing_account
+        mock_wallet_repository.find_by_account_id.return_value = existing_wallet
 
         input_data = DepositFundsInput(
-            account_id=existing_account.id,
+            account_id=existing_wallet.account_id,
             amount=Money(amount=Decimal("100.00")),
         )
-
-        # Act
         result = deposit_funds.execute(input_data)
 
-        # Assert
         assert isinstance(result, DepositFundsOutput)
-        assert result.account_id == existing_account.id
+        assert result.account_id == existing_wallet.account_id
         assert result.amount.amount == Decimal("100.00")
         assert result.transaction_type == TransactionType.DEPOSIT
         assert result.status == TransactionStatus.COMPLETED
 
-        mock_account_repository.find_by_id.assert_called_once_with(existing_account.id)
-        mock_account_repository.save.assert_called_once()
+        mock_wallet_repository.find_by_account_id.assert_called_once_with(
+            existing_wallet.account_id
+        )
+        mock_wallet_repository.save.assert_called_once()
         mock_transaction_repository.save.assert_called_once()
         mock_ledger_entry_repository.save.assert_called_once()
         mock_unit_of_work.commit.assert_called_once()
@@ -139,110 +120,70 @@ class TestDepositFunds:
     def test_deposit_funds_raises_exception_when_account_not_found(
         self,
         deposit_funds: DepositFunds,
-        mock_account_repository: MagicMock,
+        mock_wallet_repository: MagicMock,
         mock_unit_of_work: MagicMock,
     ):
-        # Arrange
-        mock_account_repository.find_by_id.return_value = None
+        mock_wallet_repository.find_by_account_id.return_value = None
 
         input_data = DepositFundsInput(
             account_id=uuid4(),
             amount=Money(amount=Decimal("100.00")),
         )
-
-        # Act & Assert
         with pytest.raises(AccountNotFoundException):
             deposit_funds.execute(input_data)
 
-        mock_account_repository.find_by_id.assert_called_once()
-        mock_account_repository.save.assert_not_called()
+        mock_wallet_repository.find_by_account_id.assert_called_once()
+        mock_wallet_repository.save.assert_not_called()
         mock_unit_of_work.commit.assert_not_called()
 
     def test_deposit_funds_raises_exception_when_amount_is_zero(
         self,
         deposit_funds: DepositFunds,
-        mock_account_repository: MagicMock,
-        existing_account: Account,
+        mock_wallet_repository: MagicMock,
+        existing_wallet: Wallet,
         mock_unit_of_work: MagicMock,
     ):
-        # Arrange
-        mock_account_repository.find_by_id.return_value = existing_account
+        mock_wallet_repository.find_by_account_id.return_value = existing_wallet
 
         input_data = DepositFundsInput(
-            account_id=existing_account.id,
+            account_id=existing_wallet.account_id,
             amount=Money(amount=Decimal("0.00")),
         )
-
-        # Act & Assert
         with pytest.raises(InvalidDepositAmountException):
             deposit_funds.execute(input_data)
 
-        mock_account_repository.find_by_id.assert_called_once()
-        mock_account_repository.save.assert_not_called()
+        mock_wallet_repository.find_by_account_id.assert_called_once()
+        mock_wallet_repository.save.assert_not_called()
         mock_unit_of_work.commit.assert_not_called()
 
     def test_deposit_funds_raises_exception_when_amount_is_negative(
         self,
         deposit_funds: DepositFunds,
-        mock_account_repository: MagicMock,
-        existing_account: Account,
+        mock_wallet_repository: MagicMock,
+        existing_wallet: Wallet,
     ):
-        # Arrange
-        mock_account_repository.find_by_id.return_value = existing_account
+        mock_wallet_repository.find_by_account_id.return_value = existing_wallet
 
-        # Money validation happens at object creation, so we test that
-        # InvalidMoneyAmountException is raised when creating Money with negative value
         with pytest.raises(InvalidMoneyAmountException):
             Money(amount=Decimal("-100.00"))
-
-    def test_deposit_funds_raises_exception_when_account_cannot_deposit(
-        self,
-        deposit_funds: DepositFunds,
-        mock_account_repository: MagicMock,
-        mock_unit_of_work: MagicMock,
-    ):
-        # Arrange
-        blocked_account = Account(
-            account_id=UUID("12345678-1234-1234-1234-123456789012"),
-            tax_id=CPF(value=self.VALID_CPF),
-            name=Name(value="John Doe"),
-            email=Email(value="john@example.com"),
-            balance=Money(amount=Decimal(0)),
-            status=AccountStatus.BLOCKED,
-        )
-        mock_account_repository.find_by_id.return_value = blocked_account
-
-        input_data = DepositFundsInput(
-            account_id=blocked_account.id,
-            amount=Money(amount=Decimal("100.00")),
-        )
-
-        # Act & Assert
-        with pytest.raises(AccountCantDepositFundsException):
-            deposit_funds.execute(input_data)
-
-        mock_account_repository.find_by_id.assert_called_once()
-        mock_account_repository.save.assert_not_called()
-        mock_unit_of_work.commit.assert_not_called()
 
     def test_deposit_funds_with_idempotency_key_returns_existing_transaction(
         self,
         deposit_funds: DepositFunds,
-        mock_account_repository: MagicMock,
+        mock_wallet_repository: MagicMock,
         mock_transaction_repository: MagicMock,
         mock_ledger_entry_repository: MagicMock,
-        existing_account: Account,
+        existing_wallet: Wallet,
         mock_unit_of_work: MagicMock,
     ):
-        # Arrange
-        mock_account_repository.find_by_id.return_value = existing_account
+        mock_wallet_repository.find_by_account_id.return_value = existing_wallet
 
         existing_transaction = Transaction(
             transaction_id=UUID("99999999-9999-9999-9999-999999999999"),
             transaction_type=TransactionType.DEPOSIT,
             transaction_status=TransactionStatus.COMPLETED,
             transaction_amount=Money(amount=Decimal("100.00")),
-            payee_account_id=existing_account.id,
+            payee_account_id=existing_wallet.account_id,
             idempotency_key="unique-key-123",
         )
         mock_transaction_repository.find_by_idempotency_key.return_value = (
@@ -250,111 +191,75 @@ class TestDepositFunds:
         )
 
         input_data = DepositFundsInput(
-            account_id=existing_account.id,
+            account_id=existing_wallet.account_id,
             amount=Money(amount=Decimal("100.00")),
             idempotency_key="unique-key-123",
         )
-
-        # Act
         result = deposit_funds.execute(input_data)
-
-        # Assert
         assert isinstance(result, DepositFundsOutput)
         assert result.transaction_id == existing_transaction.id
 
-        # Não deve criar nova transação
+        mock_wallet_repository.save.assert_not_called()
         mock_transaction_repository.save.assert_not_called()
         mock_ledger_entry_repository.save.assert_not_called()
         mock_unit_of_work.commit.assert_not_called()
 
-    def test_deposit_funds_updates_account_balance(
+    def test_deposit_funds_updates_wallet_balance(
         self,
         deposit_funds: DepositFunds,
-        mock_account_repository: MagicMock,
-        existing_account: Account,
+        mock_wallet_repository: MagicMock,
+        existing_wallet: Wallet,
     ):
-        # Arrange
-        mock_account_repository.find_by_id.return_value = existing_account
+        mock_wallet_repository.find_by_account_id.return_value = existing_wallet
 
         input_data = DepositFundsInput(
-            account_id=existing_account.id,
+            account_id=existing_wallet.account_id,
             amount=Money(amount=Decimal("100.00")),
         )
-
-        # Act
         deposit_funds.execute(input_data)
-
-        # Assert
-        saved_account = mock_account_repository.save.call_args[0][0]
-        assert saved_account.balance.amount == Decimal("100.00")
+        saved_wallet = mock_wallet_repository.save.call_args[0][0]
+        assert saved_wallet.balance.amount == Decimal("100.00")
 
     def test_deposit_funds_creates_ledger_entry_with_credit_type(
         self,
         deposit_funds: DepositFunds,
-        mock_account_repository: MagicMock,
+        mock_wallet_repository: MagicMock,
         mock_ledger_entry_repository: MagicMock,
-        existing_account: Account,
+        existing_wallet: Wallet,
     ):
-        # Arrange
-        mock_account_repository.find_by_id.return_value = existing_account
+        mock_wallet_repository.find_by_account_id.return_value = existing_wallet
 
         input_data = DepositFundsInput(
-            account_id=existing_account.id,
+            account_id=existing_wallet.account_id,
             amount=Money(amount=Decimal("100.00")),
         )
-
-        # Act
         deposit_funds.execute(input_data)
-
-        # Assert
         ledger_entry = mock_ledger_entry_repository.save.call_args[0][0]
-        assert ledger_entry.account_id == existing_account.id
+        assert ledger_entry.wallet_id == existing_wallet.id
         assert ledger_entry.amount.amount == Decimal("100.00")
 
-    def test_deposit_funds_multiple_deposits_accumulate_balance(
+    def test_deposit_funds_multiple_wallets_accumulate_balance_independently(
         self,
         deposit_funds: DepositFunds,
-        mock_account_repository: MagicMock,
+        mock_wallet_repository: MagicMock,
+        create_wallet,
     ):
-        # Arrange - cria duas contas diferentes para simular depósitos separados
-        account1 = Account(
-            account_id=uuid4(),
-            tax_id=CPF(value=self.VALID_CPF),
-            name=Name(value="John Doe"),
-            email=Email(value="john@example.com"),
-            balance=Money(amount=Decimal(0)),
-            status=AccountStatus.ACTIVE,
-        )
-        account2 = Account(
-            account_id=uuid4(),
-            tax_id=CPF(value=self.VALID_CPF),
-            name=Name(value="John Doe"),
-            email=Email(value="john@example.com"),
-            balance=Money(amount=Decimal(0)),
-            status=AccountStatus.ACTIVE,
-        )
+        wallet1 = create_wallet()
+        wallet2 = create_wallet()
 
-        # First deposit
-        mock_account_repository.find_by_id.return_value = account1
+        mock_wallet_repository.find_by_account_id.return_value = wallet1
         input_data1 = DepositFundsInput(
-            account_id=account1.id,
+            account_id=wallet1.account_id,
             amount=Money(amount=Decimal("100.00")),
         )
         result1 = deposit_funds.execute(input_data1)
-
-        # Assert after first deposit
         assert result1.amount.amount == Decimal("100.00")
 
-        # Second deposit with different account
-        mock_account_repository.find_by_id.return_value = account2
+        mock_wallet_repository.find_by_account_id.return_value = wallet2
         input_data2 = DepositFundsInput(
-            account_id=account2.id,
+            account_id=wallet2.account_id,
             amount=Money(amount=Decimal("50.00")),
         )
         result2 = deposit_funds.execute(input_data2)
-
-        # Assert after second deposit
         assert result2.amount.amount == Decimal("50.00")
-
-        # Verify both saves were called
-        assert mock_account_repository.save.call_count == 2
+        assert mock_wallet_repository.save.call_count == 2

@@ -43,10 +43,10 @@ class LedgerEntryRepositoryImpl(LedgerEntryRepository):
         models = self._session.scalars(stmt).all()
         return [self._to_entity(model) for model in models]
 
-    def find_by_account_id(self, account_id: UUID) -> list[LedgerEntry]:
+    def find_by_wallet_id(self, wallet_id: UUID) -> list[LedgerEntry]:
         stmt = (
             select(LedgerEntryModel)
-            .where(LedgerEntryModel.account_id == account_id)
+            .where(LedgerEntryModel.wallet_id == wallet_id)
             .order_by(LedgerEntryModel.created_at, LedgerEntryModel.id)
         )
         models = self._session.scalars(stmt).all()
@@ -56,7 +56,7 @@ class LedgerEntryRepositoryImpl(LedgerEntryRepository):
         return LedgerEntry(
             ledger_entry_id=model.id,
             transaction_id=model.transaction_id,
-            account_id=model.account_id,
+            wallet_id=model.wallet_id,
             entry_type=LedgerEntryType(model.entry_type),
             amount=Money(
                 amount=Decimal(model.amount),
@@ -69,7 +69,7 @@ class LedgerEntryRepositoryImpl(LedgerEntryRepository):
         return LedgerEntryModel(
             id=ledger_entry.id,
             transaction_id=ledger_entry.transaction_id,
-            account_id=ledger_entry.account_id,
+            wallet_id=ledger_entry.wallet_id,
             entry_type=ledger_entry.entry_type.value,
             amount=str(ledger_entry.amount.amount),
             currency=ledger_entry.amount.currency,

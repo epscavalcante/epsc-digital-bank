@@ -1,3 +1,4 @@
+from app.banking.domain.entities.wallet import Wallet
 from app.identity.application.exceptions.account_already_exists_exception import (
     AccountAlreadyExistsException,
 )
@@ -37,8 +38,11 @@ class Signup:
                 email=input_data.email,
                 tax_id=input_data.tax_id,
             )
+            # fazer a criação por evento...
+            wallet = Wallet.create(account_id=account.id)
 
             uow.account_repository.save(account)
+            uow.wallet_repository.save(wallet)
             uow.commit()
 
             return SignupOutput(

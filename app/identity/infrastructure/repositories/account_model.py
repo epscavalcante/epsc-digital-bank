@@ -14,8 +14,6 @@ class AccountModel(Base):
     tax_id: Mapped[str] = mapped_column(String(11), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(255))
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    balance_amount: Mapped[str] = mapped_column(String(50))
-    balance_currency: Mapped[str] = mapped_column(String(3), default="BRL")
     status: Mapped[str] = mapped_column(String(20), default="active")
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(

@@ -12,14 +12,14 @@ class LedgerEntry:
         self,
         ledger_entry_id: UUID,
         transaction_id: UUID,
-        account_id: UUID,
+        wallet_id: UUID,
         entry_type: LedgerEntryType,
         amount: Money,
         created_at: datetime,
     ) -> None:
         self._ledger_entry_id = ledger_entry_id
         self._transaction_id = transaction_id
-        self._account_id = account_id
+        self._wallet_id = wallet_id
         self._entry_type = entry_type
         self._amount = amount
         self._created_at = created_at
@@ -33,8 +33,8 @@ class LedgerEntry:
         return self._transaction_id
 
     @property
-    def account_id(self) -> UUID:
-        return self._account_id
+    def wallet_id(self) -> UUID:
+        return self._wallet_id
 
     @property
     def entry_type(self) -> LedgerEntryType:
@@ -52,13 +52,13 @@ class LedgerEntry:
     def create_credit(
         cls,
         transaction_id: UUID,
-        account_id: UUID,
+        wallet_id: UUID,
         amount: Money,
     ) -> "LedgerEntry":
         return cls(
             ledger_entry_id=uuid7(),
             transaction_id=transaction_id,
-            account_id=account_id,
+            wallet_id=wallet_id,
             entry_type=LedgerEntryType.CREDIT,
             amount=amount,
             created_at=datetime.now(UTC),
@@ -68,13 +68,13 @@ class LedgerEntry:
     def create_debit(
         cls,
         transaction_id: UUID,
-        account_id: UUID,
+        wallet_id: UUID,
         amount: Money,
     ) -> "LedgerEntry":
         return cls(
             ledger_entry_id=uuid7(),
             transaction_id=transaction_id,
-            account_id=account_id,
+            wallet_id=wallet_id,
             entry_type=LedgerEntryType.DEBIT,
             amount=amount,
             created_at=datetime.now(UTC),

@@ -6,11 +6,13 @@ from app.banking.domain.repositories.ledger_entry_repository import (
 from app.banking.domain.repositories.transaction_repository import (
     TransactionRepository,
 )
+from app.banking.domain.repositories.wallet_repository import WalletRepository
 from app.identity.domain.repositories.account_repository import AccountRepository
 
 
 class UnitOfWork(Protocol):
     account_repository: AccountRepository
+    wallet_repository: WalletRepository
     transaction_repository: TransactionRepository
     ledger_entry_repository: LedgerEntryRepository
 

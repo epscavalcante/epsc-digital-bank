@@ -8,6 +8,9 @@ from app.banking.infrastructure.repositories.ledger_entry_repository_impl import
 from app.banking.infrastructure.repositories.transaction_repository_impl import (
     TransactionRepositoryImpl,
 )
+from app.banking.infrastructure.repositories.wallet_repository_impl import (
+    WalletRepositoryImpl,
+)
 from app.identity.infrastructure.database import Database
 from app.identity.infrastructure.repositories.account_repository_impl import (
     AccountRepositoryImpl,
@@ -20,12 +23,14 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
         self._database = database
         self._session: Session | None = None
         self.account_repository = cast(AccountRepositoryImpl, None)
+        self.wallet_repository = cast(WalletRepositoryImpl, None)
         self.transaction_repository = cast(TransactionRepositoryImpl, None)
         self.ledger_entry_repository = cast(LedgerEntryRepositoryImpl, None)
 
     def __enter__(self) -> "SqlAlchemyUnitOfWork":
         self._session = self._database.get_session()
         self.account_repository = AccountRepositoryImpl(self._session)
+        self.wallet_repository = WalletRepositoryImpl(self._session)
         self.transaction_repository = TransactionRepositoryImpl(self._session)
         self.ledger_entry_repository = LedgerEntryRepositoryImpl(self._session)
         return self
