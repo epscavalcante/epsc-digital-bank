@@ -58,17 +58,23 @@ class TestDepositFunds:
         return mock
 
     @pytest.fixture
-    def deposit_funds(
+    def mock_unit_of_work(
         self,
         mock_account_repository: MagicMock,
         mock_transaction_repository: MagicMock,
         mock_ledger_entry_repository: MagicMock,
-    ) -> DepositFunds:
-        return DepositFunds(
-            account_repository=mock_account_repository,
-            transaction_repository=mock_transaction_repository,
-            ledger_entry_repository=mock_ledger_entry_repository,
-        )
+    ) -> MagicMock:
+        mock = MagicMock()
+        mock.account_repository = mock_account_repository
+        mock.transaction_repository = mock_transaction_repository
+        mock.ledger_entry_repository = mock_ledger_entry_repository
+        mock.__enter__.return_value = mock
+        mock.__exit__.return_value = None
+        return mock
+
+    @pytest.fixture
+    def deposit_funds(self, mock_unit_of_work: MagicMock) -> DepositFunds:
+        return DepositFunds(unit_of_work=mock_unit_of_work)
 
     @pytest.fixture
     def existing_account(self) -> Account:
@@ -104,6 +110,7 @@ class TestDepositFunds:
         mock_transaction_repository: MagicMock,
         mock_ledger_entry_repository: MagicMock,
         existing_account: Account,
+        mock_unit_of_work: MagicMock,
     ):
         # Arrange
         mock_account_repository.find_by_id.return_value = existing_account
@@ -127,11 +134,13 @@ class TestDepositFunds:
         mock_account_repository.save.assert_called_once()
         mock_transaction_repository.save.assert_called_once()
         mock_ledger_entry_repository.save.assert_called_once()
+        mock_unit_of_work.commit.assert_called_once()
 
     def test_deposit_funds_raises_exception_when_account_not_found(
         self,
         deposit_funds: DepositFunds,
         mock_account_repository: MagicMock,
+        mock_unit_of_work: MagicMock,
     ):
         # Arrange
         mock_account_repository.find_by_id.return_value = None
@@ -147,12 +156,14 @@ class TestDepositFunds:
 
         mock_account_repository.find_by_id.assert_called_once()
         mock_account_repository.save.assert_not_called()
+        mock_unit_of_work.commit.assert_not_called()
 
     def test_deposit_funds_raises_exception_when_amount_is_zero(
         self,
         deposit_funds: DepositFunds,
         mock_account_repository: MagicMock,
         existing_account: Account,
+        mock_unit_of_work: MagicMock,
     ):
         # Arrange
         mock_account_repository.find_by_id.return_value = existing_account
@@ -168,6 +179,7 @@ class TestDepositFunds:
 
         mock_account_repository.find_by_id.assert_called_once()
         mock_account_repository.save.assert_not_called()
+        mock_unit_of_work.commit.assert_not_called()
 
     def test_deposit_funds_raises_exception_when_amount_is_negative(
         self,
@@ -187,6 +199,7 @@ class TestDepositFunds:
         self,
         deposit_funds: DepositFunds,
         mock_account_repository: MagicMock,
+        mock_unit_of_work: MagicMock,
     ):
         # Arrange
         blocked_account = Account(
@@ -210,6 +223,7 @@ class TestDepositFunds:
 
         mock_account_repository.find_by_id.assert_called_once()
         mock_account_repository.save.assert_not_called()
+        mock_unit_of_work.commit.assert_not_called()
 
     def test_deposit_funds_with_idempotency_key_returns_existing_transaction(
         self,
@@ -218,6 +232,7 @@ class TestDepositFunds:
         mock_transaction_repository: MagicMock,
         mock_ledger_entry_repository: MagicMock,
         existing_account: Account,
+        mock_unit_of_work: MagicMock,
     ):
         # Arrange
         mock_account_repository.find_by_id.return_value = existing_account
@@ -250,6 +265,7 @@ class TestDepositFunds:
         # Não deve criar nova transação
         mock_transaction_repository.save.assert_not_called()
         mock_ledger_entry_repository.save.assert_not_called()
+        mock_unit_of_work.commit.assert_not_called()
 
     def test_deposit_funds_updates_account_balance(
         self,

@@ -58,6 +58,10 @@ class Transaction:
     def payee_account_id(self) -> UUID | None:
         return self._payee_account_id
 
+    @property
+    def created_at(self) -> datetime | None:
+        return self._created_at
+
     # --- Métodos de Fábrica ---
     @classmethod
     def create_deposit(
