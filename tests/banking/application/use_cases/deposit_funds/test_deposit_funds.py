@@ -31,7 +31,7 @@ class TestDepositFunds:
     @pytest.fixture
     def mock_wallet_repository(self) -> MagicMock:
         mock = MagicMock()
-        mock.find_by_account_id.return_value = None
+        mock.find_by_id.return_value = None
         mock.save.return_value = None
         return mock
 
@@ -95,23 +95,21 @@ class TestDepositFunds:
         existing_wallet: Wallet,
         mock_unit_of_work: MagicMock,
     ):
-        mock_wallet_repository.find_by_account_id.return_value = existing_wallet
+        mock_wallet_repository.find_by_id.return_value = existing_wallet
 
         input_data = DepositFundsInput(
-            account_id=existing_wallet.account_id,
+            wallet_id=existing_wallet.id,
             amount=Money(amount=Decimal("100.00")),
         )
         result = deposit_funds.execute(input_data)
 
         assert isinstance(result, DepositFundsOutput)
-        assert result.account_id == existing_wallet.account_id
+        assert result.wallet_id == existing_wallet.id
         assert result.amount.amount == Decimal("100.00")
         assert result.transaction_type == TransactionType.DEPOSIT
         assert result.status == TransactionStatus.COMPLETED
 
-        mock_wallet_repository.find_by_account_id.assert_called_once_with(
-            existing_wallet.account_id
-        )
+        mock_wallet_repository.find_by_id.assert_called_once_with(existing_wallet.id)
         mock_wallet_repository.save.assert_called_once()
         mock_transaction_repository.save.assert_called_once()
         mock_ledger_entry_repository.save.assert_called_once()
@@ -123,16 +121,16 @@ class TestDepositFunds:
         mock_wallet_repository: MagicMock,
         mock_unit_of_work: MagicMock,
     ):
-        mock_wallet_repository.find_by_account_id.return_value = None
+        mock_wallet_repository.find_by_id.return_value = None
 
         input_data = DepositFundsInput(
-            account_id=uuid4(),
+            wallet_id=uuid4(),
             amount=Money(amount=Decimal("100.00")),
         )
         with pytest.raises(AccountNotFoundException):
             deposit_funds.execute(input_data)
 
-        mock_wallet_repository.find_by_account_id.assert_called_once()
+        mock_wallet_repository.find_by_id.assert_called_once()
         mock_wallet_repository.save.assert_not_called()
         mock_unit_of_work.commit.assert_not_called()
 
@@ -143,16 +141,16 @@ class TestDepositFunds:
         existing_wallet: Wallet,
         mock_unit_of_work: MagicMock,
     ):
-        mock_wallet_repository.find_by_account_id.return_value = existing_wallet
+        mock_wallet_repository.find_by_id.return_value = existing_wallet
 
         input_data = DepositFundsInput(
-            account_id=existing_wallet.account_id,
+            wallet_id=existing_wallet.id,
             amount=Money(amount=Decimal("0.00")),
         )
         with pytest.raises(InvalidDepositAmountException):
             deposit_funds.execute(input_data)
 
-        mock_wallet_repository.find_by_account_id.assert_called_once()
+        mock_wallet_repository.find_by_id.assert_called_once()
         mock_wallet_repository.save.assert_not_called()
         mock_unit_of_work.commit.assert_not_called()
 
@@ -162,7 +160,7 @@ class TestDepositFunds:
         mock_wallet_repository: MagicMock,
         existing_wallet: Wallet,
     ):
-        mock_wallet_repository.find_by_account_id.return_value = existing_wallet
+        mock_wallet_repository.find_by_id.return_value = existing_wallet
 
         with pytest.raises(InvalidMoneyAmountException):
             Money(amount=Decimal("-100.00"))
@@ -176,7 +174,7 @@ class TestDepositFunds:
         existing_wallet: Wallet,
         mock_unit_of_work: MagicMock,
     ):
-        mock_wallet_repository.find_by_account_id.return_value = existing_wallet
+        mock_wallet_repository.find_by_id.return_value = existing_wallet
 
         existing_transaction = Transaction(
             transaction_id=UUID("99999999-9999-9999-9999-999999999999"),
@@ -191,7 +189,7 @@ class TestDepositFunds:
         )
 
         input_data = DepositFundsInput(
-            account_id=existing_wallet.account_id,
+            wallet_id=existing_wallet.id,
             amount=Money(amount=Decimal("100.00")),
             idempotency_key="unique-key-123",
         )
@@ -210,10 +208,10 @@ class TestDepositFunds:
         mock_wallet_repository: MagicMock,
         existing_wallet: Wallet,
     ):
-        mock_wallet_repository.find_by_account_id.return_value = existing_wallet
+        mock_wallet_repository.find_by_id.return_value = existing_wallet
 
         input_data = DepositFundsInput(
-            account_id=existing_wallet.account_id,
+            wallet_id=existing_wallet.id,
             amount=Money(amount=Decimal("100.00")),
         )
         deposit_funds.execute(input_data)
@@ -227,10 +225,10 @@ class TestDepositFunds:
         mock_ledger_entry_repository: MagicMock,
         existing_wallet: Wallet,
     ):
-        mock_wallet_repository.find_by_account_id.return_value = existing_wallet
+        mock_wallet_repository.find_by_id.return_value = existing_wallet
 
         input_data = DepositFundsInput(
-            account_id=existing_wallet.account_id,
+            wallet_id=existing_wallet.id,
             amount=Money(amount=Decimal("100.00")),
         )
         deposit_funds.execute(input_data)
@@ -247,17 +245,17 @@ class TestDepositFunds:
         wallet1 = create_wallet()
         wallet2 = create_wallet()
 
-        mock_wallet_repository.find_by_account_id.return_value = wallet1
+        mock_wallet_repository.find_by_id.return_value = wallet1
         input_data1 = DepositFundsInput(
-            account_id=wallet1.account_id,
+            wallet_id=wallet1.id,
             amount=Money(amount=Decimal("100.00")),
         )
         result1 = deposit_funds.execute(input_data1)
         assert result1.amount.amount == Decimal("100.00")
 
-        mock_wallet_repository.find_by_account_id.return_value = wallet2
+        mock_wallet_repository.find_by_id.return_value = wallet2
         input_data2 = DepositFundsInput(
-            account_id=wallet2.account_id,
+            wallet_id=wallet2.id,
             amount=Money(amount=Decimal("50.00")),
         )
         result2 = deposit_funds.execute(input_data2)

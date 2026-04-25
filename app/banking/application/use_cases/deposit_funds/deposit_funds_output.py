@@ -9,7 +9,7 @@ from app.banking.domain.value_objects.money import Money
 @dataclass(frozen=True, slots=True)
 class DepositFundsOutput:
     transaction_id: UUID
-    account_id: UUID
+    wallet_id: UUID
     amount: Money
     transaction_type: TransactionType
     status: TransactionStatus

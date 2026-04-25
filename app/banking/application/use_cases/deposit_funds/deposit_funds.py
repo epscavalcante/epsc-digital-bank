@@ -28,9 +28,7 @@ class DepositFunds:
         input_data: DepositFundsInput,
     ) -> DepositFundsOutput:
         with self._unit_of_work as uow:
-            wallet = uow.wallet_repository.find_by_account_id(
-                input_data.account_id,
-            )
+            wallet = uow.wallet_repository.find_by_id(input_data.wallet_id)
 
             if wallet is None:
                 raise AccountNotFoundException()
@@ -50,7 +48,7 @@ class DepositFunds:
             if existing_transaction is not None:
                 return DepositFundsOutput(
                     transaction_id=existing_transaction.id,
-                    account_id=input_data.account_id,
+                    wallet_id=input_data.wallet_id,
                     amount=existing_transaction.amount,
                     transaction_type=existing_transaction.type,
                     status=existing_transaction.status,
@@ -77,7 +75,7 @@ class DepositFunds:
 
             return DepositFundsOutput(
                 transaction_id=transaction.id,
-                account_id=wallet.account_id,
+                wallet_id=wallet.id,
                 amount=transaction.amount,
                 transaction_type=transaction.type,
                 status=transaction.status,

@@ -24,7 +24,6 @@ class SignupResponse(BaseModel):
 
 class DepositFundsRequest(BaseModel):
     amount: Decimal
-    idempotency_key: str | None = None
 
 
 class MoneyResponse(BaseModel):
@@ -36,7 +35,7 @@ class MoneyResponse(BaseModel):
 
 class DepositFundsResponse(BaseModel):
     transaction_id: UUID
-    account_id: UUID
+    wallet_id: UUID
     amount: MoneyResponse
     transaction_type: str
     status: str

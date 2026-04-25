@@ -53,7 +53,7 @@ class TestDepositFundsIntegration:
 
         result = deposit_funds.execute(
             DepositFundsInput(
-                account_id=account.id,
+                wallet_id=wallet.id,
                 amount=Money(amount=Decimal("100.00")),
                 idempotency_key="deposit-int-001",
             )
@@ -99,7 +99,7 @@ class TestDepositFundsIntegration:
 
         first_result = deposit_funds.execute(
             DepositFundsInput(
-                account_id=account.id,
+                wallet_id=wallet.id,
                 amount=Money(amount=Decimal("50.00")),
                 idempotency_key="deposit-int-002",
             )
@@ -107,7 +107,7 @@ class TestDepositFundsIntegration:
 
         second_result = deposit_funds.execute(
             DepositFundsInput(
-                account_id=account.id,
+                wallet_id=wallet.id,
                 amount=Money(amount=Decimal("50.00")),
                 idempotency_key="deposit-int-002",
             )
@@ -164,7 +164,7 @@ class TestDepositFundsIntegration:
         with pytest.raises(RuntimeError, match="ledger failure"):
             deposit_funds.execute(
                 DepositFundsInput(
-                    account_id=account.id,
+                    wallet_id=wallet.id,
                     amount=Money(amount=Decimal("90.00")),
                     idempotency_key="deposit-int-003",
                 )

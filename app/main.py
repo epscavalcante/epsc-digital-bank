@@ -1,18 +1,12 @@
 import os
 from contextlib import asynccontextmanager
-from uuid import UUID
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 from app.api.schemas import (
-    DepositFundsRequest,
-    DepositFundsResponse,
     ErrorResponse,
     HealthResponse,
-    MoneyResponse,
-    SignupRequest,
-    SignupResponse,
 )
 from app.banking.application.exceptions.account_cant_deposit_funds_exception import (
     AccountCantDepositFundsException,
@@ -20,25 +14,19 @@ from app.banking.application.exceptions.account_cant_deposit_funds_exception imp
 from app.banking.application.exceptions.invalid_deposit_amount_exception import (
     InvalidDepositAmountException,
 )
-from app.banking.application.use_cases.deposit_funds.deposit_funds import DepositFunds
-from app.banking.application.use_cases.deposit_funds.deposit_funds_input import (
-    DepositFundsInput,
-)
 from app.banking.domain.exceptions.invalid_money_amount_exception import (
     InvalidMoneyAmountException,
 )
-from app.banking.domain.value_objects.money import Money
+from app.banking.infrastructure.router import router as banking_router
 from app.identity.application.exceptions.account_not_found_exception import (
     AccountNotFoundException,
 )
-from app.identity.application.use_cases.signup.signup import Signup
-from app.identity.application.use_cases.signup.signup_input import SignupInput
 from app.identity.domain.exceptions.invalid_cpf_exception import InvalidCPFException
 from app.identity.domain.exceptions.invalid_email_exception import InvalidEmailException
 from app.identity.domain.exceptions.invalid_name_exception import InvalidNameException
 from app.identity.infrastructure.database import Database
+from app.identity.infrastructure.router import router as identity_router
 from app.shared.domain.exceptions import AlreadyExistsException, DomainException
-from app.shared.infrastructure.sqlalchemy_unit_of_work import SqlAlchemyUnitOfWork
 
 
 def create_app(database_url: str | None = None) -> FastAPI:
@@ -109,58 +97,8 @@ def create_app(database_url: str | None = None) -> FastAPI:
     async def healthcheck() -> HealthResponse:
         return HealthResponse(status="ok")
 
-    @app.post(
-        "/accounts",
-        response_model=SignupResponse,
-        status_code=status.HTTP_201_CREATED,
-        responses={
-            status.HTTP_409_CONFLICT: {"model": ErrorResponse},
-            status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
-        },
-    )
-    async def signup_account(payload: SignupRequest) -> SignupResponse:
-        uow = SqlAlchemyUnitOfWork(app.state.database)
-        use_case = Signup(unit_of_work=uow)
-        result = use_case.execute(
-            SignupInput(
-                tax_id=payload.tax_id,
-                name=payload.name,
-                email=payload.email,
-            )
-        )
-        return SignupResponse(account_id=result.account_id)
-
-    @app.post(
-        "/accounts/{account_id}/deposits",
-        response_model=DepositFundsResponse,
-        status_code=status.HTTP_201_CREATED,
-        responses={
-            status.HTTP_404_NOT_FOUND: {"model": ErrorResponse},
-            status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
-        },
-    )
-    async def deposit_funds(
-        account_id: UUID,
-        payload: DepositFundsRequest,
-    ) -> DepositFundsResponse:
-        uow = SqlAlchemyUnitOfWork(app.state.database)
-        use_case = DepositFunds(unit_of_work=uow)
-        result = use_case.execute(
-            DepositFundsInput(
-                account_id=account_id,
-                amount=Money(amount=payload.amount),
-                idempotency_key=payload.idempotency_key,
-            )
-        )
-        return DepositFundsResponse(
-            transaction_id=result.transaction_id,
-            account_id=result.account_id,
-            amount=MoneyResponse(
-                amount=result.amount.amount, currency=result.amount.currency
-            ),
-            transaction_type=result.transaction_type.value,
-            status=result.status.value,
-        )
+    app.include_router(identity_router)
+    app.include_router(banking_router)
 
     return app
 
