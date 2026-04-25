@@ -2,6 +2,8 @@ services:
   app:
     build: .
     container_name: epsc-digital-bank-app
+    ports:
+      - "8000:8000"
     volumes:
       - .:/app
     stdin_open: true

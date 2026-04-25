@@ -1,6 +1,8 @@
+from decimal import Decimal
 from unittest.mock import MagicMock
 from uuid import UUID
 
+from app.banking.domain.value_objects.money import Money
 import pytest
 
 from app.identity.application.exceptions.account_already_exists_exception import (
@@ -21,18 +23,27 @@ class TestSignup:
     @pytest.fixture
     def mock_account_repository(self) -> MagicMock:
         mock = MagicMock()
-        # Configurar o mock para aceitar qualquer chamada de método
         mock.find_by_tax_id.return_value = None
         mock.find_by_email.return_value = None
-        mock.create.return_value = None
         return mock
 
     @pytest.fixture
-    def signup(self, mock_account_repository: MagicMock) -> Signup:
-        return Signup(account_repository=mock_account_repository)
+    def mock_unit_of_work(self, mock_account_repository: MagicMock) -> MagicMock:
+        mock = MagicMock()
+        mock.account_repository = mock_account_repository
+        mock.__enter__.return_value = mock
+        mock.__exit__.return_value = None
+        return mock
+
+    @pytest.fixture
+    def signup(self, mock_unit_of_work: MagicMock) -> Signup:
+        return Signup(unit_of_work=mock_unit_of_work)
 
     def test_signup_creates_account_successfully(
-        self, signup: Signup, mock_account_repository: MagicMock
+        self,
+        signup: Signup,
+        mock_account_repository: MagicMock,
+        mock_unit_of_work: MagicMock,
     ):
         # Arrange
         mock_account_repository.find_by_tax_id.return_value = None
@@ -53,9 +64,13 @@ class TestSignup:
         mock_account_repository.find_by_tax_id.assert_called_once()
         mock_account_repository.find_by_email.assert_called_once()
         mock_account_repository.save.assert_called_once()
+        mock_unit_of_work.commit.assert_called_once()
 
     def test_signup_raises_exception_when_cpf_already_exists(
-        self, signup: Signup, mock_account_repository: MagicMock
+        self,
+        signup: Signup,
+        mock_account_repository: MagicMock,
+        mock_unit_of_work: MagicMock,
     ):
         # Arrange
         existing_account = Account(
@@ -63,6 +78,7 @@ class TestSignup:
             tax_id=CPF(value=self.VALID_CPF),
             name=Name(value="Existing User"),
             email=Email(value="existing@example.com"),
+            balance=Money(amount=Decimal(0)),
         )
         mock_account_repository.find_by_tax_id.return_value = existing_account
 
@@ -78,10 +94,14 @@ class TestSignup:
 
         mock_account_repository.find_by_tax_id.assert_called_once()
         mock_account_repository.find_by_email.assert_not_called()
-        mock_account_repository.create.assert_not_called()
+        mock_account_repository.save.assert_not_called()
+        mock_unit_of_work.commit.assert_not_called()
 
     def test_signup_raises_exception_when_email_already_exists(
-        self, signup: Signup, mock_account_repository: MagicMock
+        self,
+        signup: Signup,
+        mock_account_repository: MagicMock,
+        mock_unit_of_work: MagicMock,
     ):
         # Arrange
         mock_account_repository.find_by_tax_id.return_value = None
@@ -91,6 +111,7 @@ class TestSignup:
             tax_id=CPF(value=self.VALID_CPF),
             name=Name(value="Existing User"),
             email=Email(value="john@example.com"),
+            balance=Money(amount=Decimal(0)),
         )
         mock_account_repository.find_by_email.return_value = existing_account
 
@@ -106,22 +127,18 @@ class TestSignup:
 
         mock_account_repository.find_by_tax_id.assert_called_once()
         mock_account_repository.find_by_email.assert_called_once()
-        mock_account_repository.create.assert_not_called()
+        mock_account_repository.save.assert_not_called()
+        mock_unit_of_work.commit.assert_not_called()
 
     def test_signup_calls_repository_with_normalized_values(
-        self, signup: Signup, mock_account_repository: MagicMock
+        self,
+        signup: Signup,
+        mock_account_repository: MagicMock,
+        mock_unit_of_work: MagicMock,
     ):
         # Arrange
         mock_account_repository.find_by_tax_id.return_value = None
         mock_account_repository.find_by_email.return_value = None
-
-        created_account = Account(
-            account_id=UUID("12345678-1234-1234-1234-123456789012"),
-            tax_id=CPF(value=self.VALID_CPF),
-            name=Name(value="John Doe"),
-            email=Email(value="john@example.com"),
-        )
-        mock_account_repository.create.return_value = created_account
 
         input_data = SignupInput(
             tax_id="529.982.247-25",  # Com formatação
@@ -140,3 +157,4 @@ class TestSignup:
         # Verifica que o email foi normalizado (lowercase)
         call_args = mock_account_repository.find_by_email.call_args
         assert call_args[0][0].value == "john@example.com"
+        mock_unit_of_work.commit.assert_called_once()

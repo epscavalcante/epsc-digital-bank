@@ -4,6 +4,27 @@ O **EPSC Digital Bank** é um motor de transações financeiras (Core Banking) d
 
 O projeto foca no desafio de transferências entre contas (P2P), garantindo que o dinheiro nunca seja "perdido" ou "duplicado" em cenários de alta concorrência.
 
+## Ambiente de desenvolvimento
+
+O projeto roda dentro do container `app` definido no `docker compose`. Para facilitar o fluxo do dia a dia, existe um `Makefile` na raiz com os comandos mais usados.
+
+### Comandos principais
+
+```bash
+make build   # builda a imagem
+make up      # sobe os containers
+make shell   # abre shell no container app
+make api     # sobe a API FastAPI na porta 8000
+make lint    # roda ruff via taskipy
+make format  # formata o código via taskipy
+make test    # roda os testes via taskipy
+make cov     # gera coverage xml via taskipy
+make check   # roda lint, mypy e testes
+make down    # derruba tudo do compose
+```
+
+Por padrão, o `Makefile` usa `sudo docker compose`, já que o ambiente atual depende de permissões elevadas para executar comandos Docker.
+
 ## Escopo inicial
 
 Precisa ser pequeno o suficiente para ser implementável, mas robusto o suficiente para não gerar uma arquitetura descartável.
