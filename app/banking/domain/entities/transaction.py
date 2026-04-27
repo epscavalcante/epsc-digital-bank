@@ -81,6 +81,25 @@ class Transaction:
             created_at=datetime.now(UTC),
         )
 
+    @classmethod
+    def create_transfer(
+        cls,
+        amount: Money,
+        payer_account_id: UUID,
+        payee_account_id: UUID,
+        idempotency_key: str | None = None,
+    ) -> "Transaction":
+        return cls(
+            transaction_id=uuid7(),
+            transaction_type=TransactionType.TRANSFER,
+            transaction_status=TransactionStatus.COMPLETED,
+            transaction_amount=amount,
+            payer_account_id=payer_account_id,
+            payee_account_id=payee_account_id,
+            idempotency_key=idempotency_key,
+            created_at=datetime.now(UTC),
+        )
+
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Transaction):
             return False

@@ -36,6 +36,9 @@ class Wallet:
     def deposit(self, amount: Money) -> None:
         self._balance = self._balance.add(amount)
 
+    def withdraw(self, amount: Money) -> None:
+        self._balance = self._balance.subtract(amount)
+
     @classmethod
     def create(
         cls,
