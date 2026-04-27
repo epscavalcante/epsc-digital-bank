@@ -28,7 +28,7 @@ class DepositFunds:
         input_data: DepositFundsInput,
     ) -> DepositFundsOutput:
         with self._unit_of_work as uow:
-            wallet = uow.wallet_repository.find_by_id(input_data.wallet_id)
+            wallet = uow.wallet_repository.find_by_id_for_update(input_data.wallet_id)
 
             if wallet is None:
                 raise AccountNotFoundException()

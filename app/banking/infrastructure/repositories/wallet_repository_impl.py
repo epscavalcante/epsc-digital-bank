@@ -21,6 +21,17 @@ class WalletRepositoryImpl(WalletRepository):
             return None
         return self._to_entity(model)
 
+    def find_by_id_for_update(self, wallet_id: UUID) -> Wallet | None:
+        stmt = (
+            select(WalletModel)
+            .where(WalletModel.id == wallet_id)
+            .with_for_update()
+        )
+        model = self._session.scalar(stmt)
+        if model is None:
+            return None
+        return self._to_entity(model)
+
     def find_by_account_id(self, account_id: UUID) -> Wallet | None:
         stmt = select(WalletModel).where(WalletModel.account_id == account_id)
         model = self._session.scalar(stmt)
