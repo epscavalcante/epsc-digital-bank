@@ -31,7 +31,7 @@ class TestDepositFunds:
     @pytest.fixture
     def mock_wallet_repository(self) -> MagicMock:
         mock = MagicMock()
-        mock.find_by_id.return_value = None
+        mock.find_by_id_for_update.return_value = None
         mock.save.return_value = None
         return mock
 
@@ -95,7 +95,7 @@ class TestDepositFunds:
         existing_wallet: Wallet,
         mock_unit_of_work: MagicMock,
     ):
-        mock_wallet_repository.find_by_id.return_value = existing_wallet
+        mock_wallet_repository.find_by_id_for_update.return_value = existing_wallet
 
         input_data = DepositFundsInput(
             wallet_id=existing_wallet.id,
@@ -109,7 +109,9 @@ class TestDepositFunds:
         assert result.transaction_type == TransactionType.DEPOSIT
         assert result.status == TransactionStatus.COMPLETED
 
-        mock_wallet_repository.find_by_id.assert_called_once_with(existing_wallet.id)
+        mock_wallet_repository.find_by_id_for_update.assert_called_once_with(
+            existing_wallet.id
+        )
         mock_wallet_repository.save.assert_called_once()
         mock_transaction_repository.save.assert_called_once()
         mock_ledger_entry_repository.save.assert_called_once()
@@ -121,7 +123,7 @@ class TestDepositFunds:
         mock_wallet_repository: MagicMock,
         mock_unit_of_work: MagicMock,
     ):
-        mock_wallet_repository.find_by_id.return_value = None
+        mock_wallet_repository.find_by_id_for_update.return_value = None
 
         input_data = DepositFundsInput(
             wallet_id=uuid4(),
@@ -130,7 +132,7 @@ class TestDepositFunds:
         with pytest.raises(AccountNotFoundException):
             deposit_funds.execute(input_data)
 
-        mock_wallet_repository.find_by_id.assert_called_once()
+        mock_wallet_repository.find_by_id_for_update.assert_called_once()
         mock_wallet_repository.save.assert_not_called()
         mock_unit_of_work.commit.assert_not_called()
 
@@ -141,7 +143,7 @@ class TestDepositFunds:
         existing_wallet: Wallet,
         mock_unit_of_work: MagicMock,
     ):
-        mock_wallet_repository.find_by_id.return_value = existing_wallet
+        mock_wallet_repository.find_by_id_for_update.return_value = existing_wallet
 
         input_data = DepositFundsInput(
             wallet_id=existing_wallet.id,
@@ -150,7 +152,7 @@ class TestDepositFunds:
         with pytest.raises(InvalidDepositAmountException):
             deposit_funds.execute(input_data)
 
-        mock_wallet_repository.find_by_id.assert_called_once()
+        mock_wallet_repository.find_by_id_for_update.assert_called_once()
         mock_wallet_repository.save.assert_not_called()
         mock_unit_of_work.commit.assert_not_called()
 
@@ -160,7 +162,7 @@ class TestDepositFunds:
         mock_wallet_repository: MagicMock,
         existing_wallet: Wallet,
     ):
-        mock_wallet_repository.find_by_id.return_value = existing_wallet
+        mock_wallet_repository.find_by_id_for_update.return_value = existing_wallet
 
         with pytest.raises(InvalidMoneyAmountException):
             Money(amount=Decimal("-100.00"))
@@ -174,7 +176,7 @@ class TestDepositFunds:
         existing_wallet: Wallet,
         mock_unit_of_work: MagicMock,
     ):
-        mock_wallet_repository.find_by_id.return_value = existing_wallet
+        mock_wallet_repository.find_by_id_for_update.return_value = existing_wallet
 
         existing_transaction = Transaction(
             transaction_id=UUID("99999999-9999-9999-9999-999999999999"),
@@ -208,7 +210,7 @@ class TestDepositFunds:
         mock_wallet_repository: MagicMock,
         existing_wallet: Wallet,
     ):
-        mock_wallet_repository.find_by_id.return_value = existing_wallet
+        mock_wallet_repository.find_by_id_for_update.return_value = existing_wallet
 
         input_data = DepositFundsInput(
             wallet_id=existing_wallet.id,
@@ -225,7 +227,7 @@ class TestDepositFunds:
         mock_ledger_entry_repository: MagicMock,
         existing_wallet: Wallet,
     ):
-        mock_wallet_repository.find_by_id.return_value = existing_wallet
+        mock_wallet_repository.find_by_id_for_update.return_value = existing_wallet
 
         input_data = DepositFundsInput(
             wallet_id=existing_wallet.id,
@@ -245,7 +247,7 @@ class TestDepositFunds:
         wallet1 = create_wallet()
         wallet2 = create_wallet()
 
-        mock_wallet_repository.find_by_id.return_value = wallet1
+        mock_wallet_repository.find_by_id_for_update.return_value = wallet1
         input_data1 = DepositFundsInput(
             wallet_id=wallet1.id,
             amount=Money(amount=Decimal("100.00")),
@@ -253,7 +255,7 @@ class TestDepositFunds:
         result1 = deposit_funds.execute(input_data1)
         assert result1.amount.amount == Decimal("100.00")
 
-        mock_wallet_repository.find_by_id.return_value = wallet2
+        mock_wallet_repository.find_by_id_for_update.return_value = wallet2
         input_data2 = DepositFundsInput(
             wallet_id=wallet2.id,
             amount=Money(amount=Decimal("50.00")),
