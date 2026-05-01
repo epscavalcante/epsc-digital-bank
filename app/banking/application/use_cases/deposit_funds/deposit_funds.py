@@ -6,6 +6,11 @@ from app.banking.application.exceptions.invalid_deposit_amount_exception import 
 )
 from app.banking.domain.entities.ledger_entry import LedgerEntry
 from app.banking.domain.entities.transaction import Transaction
+from app.banking.domain.repositories.ledger_entry_repository import (
+    LedgerEntryRepository,
+)
+from app.banking.domain.repositories.transaction_repository import TransactionRepository
+from app.banking.domain.repositories.wallet_repository import WalletRepository
 from app.shared.application.unit_of_work import UnitOfWork
 
 from .deposit_funds_input import (
@@ -20,15 +25,23 @@ class DepositFunds:
     def __init__(
         self,
         unit_of_work: UnitOfWork,
+        wallet_repository: WalletRepository,
+        transaction_repository: TransactionRepository,
+        ledger_entry_repository: LedgerEntryRepository,
     ) -> None:
         self._unit_of_work = unit_of_work
+        self._wallet_repository = wallet_repository
+        self._transaction_repository = transaction_repository
+        self._ledger_entry_repository = ledger_entry_repository
 
     def execute(
         self,
         input_data: DepositFundsInput,
     ) -> DepositFundsOutput:
         with self._unit_of_work as uow:
-            wallet = uow.wallet_repository.find_by_id(input_data.wallet_id)
+            wallet = self._wallet_repository.find_by_id_for_update(
+                input_data.wallet_id
+            )
 
             if wallet is None:
                 raise AccountNotFoundException()
@@ -40,7 +53,7 @@ class DepositFunds:
 
             if input_data.idempotency_key:
                 existing_transaction = (
-                    uow.transaction_repository.find_by_idempotency_key(
+                    self._transaction_repository.find_by_idempotency_key(
                         input_data.idempotency_key,
                     )
                 )
@@ -68,9 +81,9 @@ class DepositFunds:
                 amount=input_data.amount,
             )
 
-            uow.wallet_repository.save(wallet)
-            uow.transaction_repository.save(transaction)
-            uow.ledger_entry_repository.save(ledger_entry)
+            self._wallet_repository.save(wallet)
+            self._transaction_repository.save(transaction)
+            self._ledger_entry_repository.save(ledger_entry)
             uow.commit()
 
             return DepositFundsOutput(
