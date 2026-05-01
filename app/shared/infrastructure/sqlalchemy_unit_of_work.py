@@ -2,37 +2,26 @@ from typing import cast
 
 from sqlalchemy.orm import Session
 
-from app.banking.infrastructure.repositories.ledger_entry_repository_impl import (
-    LedgerEntryRepositoryImpl,
-)
-from app.banking.infrastructure.repositories.transaction_repository_impl import (
-    TransactionRepositoryImpl,
-)
-from app.banking.infrastructure.repositories.wallet_repository_impl import (
-    WalletRepositoryImpl,
-)
 from app.identity.infrastructure.database import Database
-from app.identity.infrastructure.repositories.account_repository_impl import (
-    AccountRepositoryImpl,
-)
 from app.shared.application.unit_of_work import UnitOfWork
 
 
 class SqlAlchemyUnitOfWork(UnitOfWork):
-    def __init__(self, database: Database) -> None:
-        self._database = database
+    def __init__(self, database_or_session: Database | Session) -> None:
+        self._database: Database | None = None
         self._session: Session | None = None
-        self.account_repository = cast(AccountRepositoryImpl, None)
-        self.wallet_repository = cast(WalletRepositoryImpl, None)
-        self.transaction_repository = cast(TransactionRepositoryImpl, None)
-        self.ledger_entry_repository = cast(LedgerEntryRepositoryImpl, None)
+        self._owns_session = isinstance(database_or_session, Database)
+
+        if self._owns_session:
+            self._database = cast(Database, database_or_session)
+        else:
+            self._session = cast(Session, database_or_session)
 
     def __enter__(self) -> "SqlAlchemyUnitOfWork":
-        self._session = self._database.get_session()
-        self.account_repository = AccountRepositoryImpl(self._session)
-        self.wallet_repository = WalletRepositoryImpl(self._session)
-        self.transaction_repository = TransactionRepositoryImpl(self._session)
-        self.ledger_entry_repository = LedgerEntryRepositoryImpl(self._session)
+        if self._session is None:
+            if self._database is None:
+                raise RuntimeError("UnitOfWork has no database or session")
+            self._session = self._database.get_session()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
@@ -43,8 +32,15 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
             if exc_type is not None:
                 self.rollback()
         finally:
-            self._session.close()
-            self._session = None
+            if self._owns_session:
+                self._session.close()
+                self._session = None
+
+    @property
+    def session(self) -> Session:
+        if self._session is None:
+            raise RuntimeError("UnitOfWork must be entered before accessing session")
+        return self._session
 
     def commit(self) -> None:
         if self._session is None:

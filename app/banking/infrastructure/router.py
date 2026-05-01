@@ -1,7 +1,14 @@
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Header, Request, status
+from fastapi import APIRouter, Depends, Header, status
 
+from app.api.dependencies import (
+    get_ledger_repository,
+    get_transaction_repository,
+    get_uow,
+    get_wallet_repository,
+)
 from app.api.schemas import (
     DepositFundsRequest,
     DepositFundsResponse,
@@ -20,8 +27,13 @@ from app.banking.application.use_cases.transfer_funds.transfer_funds import (
 from app.banking.application.use_cases.transfer_funds.transfer_funds_input import (
     TransferFundsInput,
 )
+from app.banking.domain.repositories.ledger_entry_repository import (
+    LedgerEntryRepository,
+)
+from app.banking.domain.repositories.transaction_repository import TransactionRepository
+from app.banking.domain.repositories.wallet_repository import WalletRepository
 from app.banking.domain.value_objects.money import Money
-from app.shared.infrastructure.sqlalchemy_unit_of_work import SqlAlchemyUnitOfWork
+from app.shared.application.unit_of_work import UnitOfWork
 
 router = APIRouter(tags=["Banking"])
 
@@ -36,13 +48,26 @@ router = APIRouter(tags=["Banking"])
     },
 )
 def deposit_funds(
-    request: Request,
     wallet_id: UUID,
     payload: DepositFundsRequest,
-    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
+    wallet_repository: Annotated[WalletRepository, Depends(get_wallet_repository)],
+    transaction_repository: Annotated[
+        TransactionRepository,
+        Depends(get_transaction_repository),
+    ],
+    ledger_entry_repository: Annotated[
+        LedgerEntryRepository,
+        Depends(get_ledger_repository),
+    ],
+    idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
 ) -> DepositFundsResponse:
-    uow = SqlAlchemyUnitOfWork(request.app.state.database)
-    use_case = DepositFunds(unit_of_work=uow)
+    use_case = DepositFunds(
+        unit_of_work=uow,
+        wallet_repository=wallet_repository,
+        transaction_repository=transaction_repository,
+        ledger_entry_repository=ledger_entry_repository,
+    )
     result = use_case.execute(
         DepositFundsInput(
             wallet_id=wallet_id,
@@ -72,13 +97,26 @@ def deposit_funds(
     },
 )
 def transfer_funds(
-    request: Request,
     wallet_id: UUID,
     payload: TransferFundsRequest,
-    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
+    wallet_repository: Annotated[WalletRepository, Depends(get_wallet_repository)],
+    transaction_repository: Annotated[
+        TransactionRepository,
+        Depends(get_transaction_repository),
+    ],
+    ledger_entry_repository: Annotated[
+        LedgerEntryRepository,
+        Depends(get_ledger_repository),
+    ],
+    idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
 ) -> TransferFundsResponse:
-    uow = SqlAlchemyUnitOfWork(request.app.state.database)
-    use_case = TransferFunds(unit_of_work=uow)
+    use_case = TransferFunds(
+        unit_of_work=uow,
+        wallet_repository=wallet_repository,
+        transaction_repository=transaction_repository,
+        ledger_entry_repository=ledger_entry_repository,
+    )
     result = use_case.execute(
         TransferFundsInput(
             source_wallet_id=wallet_id,

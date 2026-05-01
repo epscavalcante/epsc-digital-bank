@@ -34,24 +34,30 @@ class TestSignup:
     @pytest.fixture
     def mock_unit_of_work(
         self,
-        mock_account_repository: MagicMock,
-        mock_wallet_repository: MagicMock,
     ) -> MagicMock:
         mock = MagicMock()
-        mock.account_repository = mock_account_repository
-        mock.wallet_repository = mock_wallet_repository
         mock.__enter__.return_value = mock
         mock.__exit__.return_value = None
         return mock
 
     @pytest.fixture
-    def signup(self, mock_unit_of_work: MagicMock) -> Signup:
-        return Signup(unit_of_work=mock_unit_of_work)
+    def signup(
+        self,
+        mock_unit_of_work: MagicMock,
+        mock_account_repository: MagicMock,
+        mock_wallet_repository: MagicMock,
+    ) -> Signup:
+        return Signup(
+            unit_of_work=mock_unit_of_work,
+            account_repository=mock_account_repository,
+            wallet_repository=mock_wallet_repository,
+        )
 
     def test_signup_creates_account_successfully(
         self,
         signup: Signup,
         mock_account_repository: MagicMock,
+        mock_wallet_repository: MagicMock,
         mock_unit_of_work: MagicMock,
     ):
         # Arrange
@@ -73,7 +79,7 @@ class TestSignup:
         mock_account_repository.find_by_tax_id.assert_called_once()
         mock_account_repository.find_by_email.assert_called_once()
         mock_account_repository.save.assert_called_once()
-        mock_unit_of_work.wallet_repository.save.assert_called_once()
+        mock_wallet_repository.save.assert_called_once()
         mock_unit_of_work.commit.assert_called_once()
 
     def test_signup_raises_exception_when_cpf_already_exists(

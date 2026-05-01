@@ -6,6 +6,11 @@ from app.banking.application.exceptions.same_wallet_transfer_exception import (
 )
 from app.banking.domain.entities.ledger_entry import LedgerEntry
 from app.banking.domain.entities.transaction import Transaction
+from app.banking.domain.repositories.ledger_entry_repository import (
+    LedgerEntryRepository,
+)
+from app.banking.domain.repositories.transaction_repository import TransactionRepository
+from app.banking.domain.repositories.wallet_repository import WalletRepository
 from app.shared.application.unit_of_work import UnitOfWork
 from app.shared.domain.exceptions.not_found_exception import NotFoundException
 
@@ -17,8 +22,14 @@ class TransferFunds:
     def __init__(
         self,
         unit_of_work: UnitOfWork,
+        wallet_repository: WalletRepository,
+        transaction_repository: TransactionRepository,
+        ledger_entry_repository: LedgerEntryRepository,
     ) -> None:
         self._unit_of_work = unit_of_work
+        self._wallet_repository = wallet_repository
+        self._transaction_repository = transaction_repository
+        self._ledger_entry_repository = ledger_entry_repository
 
     def execute(
         self,
@@ -34,8 +45,10 @@ class TransferFunds:
             existing_transaction = None
 
             if input_data.idempotency_key:
-                existing_transaction = uow.transaction_repository.find_by_idempotency_key(
-                    input_data.idempotency_key
+                existing_transaction = (
+                    self._transaction_repository.find_by_idempotency_key(
+                        input_data.idempotency_key
+                    )
                 )
 
             if existing_transaction is not None:
@@ -52,10 +65,10 @@ class TransferFunds:
                 [input_data.source_wallet_id, input_data.destination_wallet_id],
                 key=str,
             )
-            first_wallet = uow.wallet_repository.find_by_id_for_update(
+            first_wallet = self._wallet_repository.find_by_id_for_update(
                 ordered_wallet_ids[0]
             )
-            second_wallet = uow.wallet_repository.find_by_id_for_update(
+            second_wallet = self._wallet_repository.find_by_id_for_update(
                 ordered_wallet_ids[1]
             )
 
@@ -92,10 +105,10 @@ class TransferFunds:
                 ),
             ]
 
-            uow.wallet_repository.save(source_wallet)
-            uow.wallet_repository.save(destination_wallet)
-            uow.transaction_repository.save(transaction)
-            uow.ledger_entry_repository.save_many(entries)
+            self._wallet_repository.save(source_wallet)
+            self._wallet_repository.save(destination_wallet)
+            self._transaction_repository.save(transaction)
+            self._ledger_entry_repository.save_many(entries)
             uow.commit()
 
             return TransferFundsOutput(

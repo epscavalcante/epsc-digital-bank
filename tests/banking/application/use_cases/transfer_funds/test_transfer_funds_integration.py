@@ -10,8 +10,20 @@ from app.banking.domain.entities.wallet import Wallet
 from app.banking.domain.enums.ledger_entry_type import LedgerEntryType
 from app.banking.domain.enums.transaction_type import TransactionType
 from app.banking.domain.value_objects.money import Money
+from app.banking.infrastructure.repositories.ledger_entry_repository_impl import (
+    LedgerEntryRepositoryImpl,
+)
+from app.banking.infrastructure.repositories.transaction_repository_impl import (
+    TransactionRepositoryImpl,
+)
+from app.banking.infrastructure.repositories.wallet_repository_impl import (
+    WalletRepositoryImpl,
+)
 from app.identity.domain.entities.account import Account
 from app.identity.infrastructure.database import Database
+from app.identity.infrastructure.repositories.account_repository_impl import (
+    AccountRepositoryImpl,
+)
 from app.shared.infrastructure.sqlalchemy_unit_of_work import SqlAlchemyUnitOfWork
 
 
@@ -28,17 +40,54 @@ class TestTransferFundsIntegration:
         db.dispose()
 
     @pytest.fixture
-    def unit_of_work(self, database):
-        return SqlAlchemyUnitOfWork(database)
+    def session(self, database):
+        session = database.get_session()
+        yield session
+        session.close()
 
     @pytest.fixture
-    def transfer_funds(self, unit_of_work):
-        return TransferFunds(unit_of_work=unit_of_work)
+    def unit_of_work(self, session):
+        return SqlAlchemyUnitOfWork(session)
+
+    @pytest.fixture
+    def account_repository(self, session):
+        return AccountRepositoryImpl(session)
+
+    @pytest.fixture
+    def wallet_repository(self, session):
+        return WalletRepositoryImpl(session)
+
+    @pytest.fixture
+    def transaction_repository(self, session):
+        return TransactionRepositoryImpl(session)
+
+    @pytest.fixture
+    def ledger_entry_repository(self, session):
+        return LedgerEntryRepositoryImpl(session)
+
+    @pytest.fixture
+    def transfer_funds(
+        self,
+        unit_of_work,
+        wallet_repository,
+        transaction_repository,
+        ledger_entry_repository,
+    ):
+        return TransferFunds(
+            unit_of_work=unit_of_work,
+            wallet_repository=wallet_repository,
+            transaction_repository=transaction_repository,
+            ledger_entry_repository=ledger_entry_repository,
+        )
 
     def test_transfer_funds_persists_wallets_transaction_and_ledger_entries(
         self,
         transfer_funds,
         unit_of_work,
+        account_repository,
+        wallet_repository,
+        transaction_repository,
+        ledger_entry_repository,
     ):
         source_account = Account.create(
             name="John Doe",
@@ -54,12 +103,12 @@ class TestTransferFundsIntegration:
         destination_wallet = Wallet.create(account_id=destination_account.id)
         source_wallet.deposit(Money(amount=Decimal("100.00")))
 
-        with unit_of_work as setup_uow:
-            setup_uow.account_repository.save(source_account)
-            setup_uow.account_repository.save(destination_account)
-            setup_uow.wallet_repository.save(source_wallet)
-            setup_uow.wallet_repository.save(destination_wallet)
-            setup_uow.commit()
+        with unit_of_work as uow:
+            account_repository.save(source_account)
+            account_repository.save(destination_account)
+            wallet_repository.save(source_wallet)
+            wallet_repository.save(destination_wallet)
+            uow.commit()
 
         result = transfer_funds.execute(
             TransferFundsInput(
@@ -70,15 +119,13 @@ class TestTransferFundsIntegration:
             )
         )
 
-        with unit_of_work as verify_uow:
-            saved_source_wallet = verify_uow.wallet_repository.find_by_id(source_wallet.id)
-            saved_destination_wallet = verify_uow.wallet_repository.find_by_id(
+        with unit_of_work:
+            saved_source_wallet = wallet_repository.find_by_id(source_wallet.id)
+            saved_destination_wallet = wallet_repository.find_by_id(
                 destination_wallet.id
             )
-            saved_transaction = verify_uow.transaction_repository.find_by_id(
-                result.transaction_id
-            )
-            saved_entries = verify_uow.ledger_entry_repository.find_by_transaction_id(
+            saved_transaction = transaction_repository.find_by_id(result.transaction_id)
+            saved_entries = ledger_entry_repository.find_by_transaction_id(
                 result.transaction_id
             )
 

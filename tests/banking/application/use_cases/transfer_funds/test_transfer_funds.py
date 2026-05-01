@@ -55,21 +55,26 @@ class TestTransferFunds:
     @pytest.fixture
     def mock_unit_of_work(
         self,
-        mock_wallet_repository: MagicMock,
-        mock_transaction_repository: MagicMock,
-        mock_ledger_entry_repository: MagicMock,
     ) -> MagicMock:
         mock = MagicMock()
-        mock.wallet_repository = mock_wallet_repository
-        mock.transaction_repository = mock_transaction_repository
-        mock.ledger_entry_repository = mock_ledger_entry_repository
         mock.__enter__.return_value = mock
         mock.__exit__.return_value = None
         return mock
 
     @pytest.fixture
-    def transfer_funds(self, mock_unit_of_work: MagicMock) -> TransferFunds:
-        return TransferFunds(unit_of_work=mock_unit_of_work)
+    def transfer_funds(
+        self,
+        mock_unit_of_work: MagicMock,
+        mock_wallet_repository: MagicMock,
+        mock_transaction_repository: MagicMock,
+        mock_ledger_entry_repository: MagicMock,
+    ) -> TransferFunds:
+        return TransferFunds(
+            unit_of_work=mock_unit_of_work,
+            wallet_repository=mock_wallet_repository,
+            transaction_repository=mock_transaction_repository,
+            ledger_entry_repository=mock_ledger_entry_repository,
+        )
 
     @pytest.fixture
     def source_wallet(self) -> Wallet:

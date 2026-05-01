@@ -2,15 +2,19 @@ from uuid import UUID
 
 from fastapi.testclient import TestClient
 
-from app.shared.infrastructure.sqlalchemy_unit_of_work import SqlAlchemyUnitOfWork
 from app.main import create_app
+from app.banking.infrastructure.repositories.wallet_repository_impl import (
+    WalletRepositoryImpl,
+)
+from app.shared.infrastructure.sqlalchemy_unit_of_work import SqlAlchemyUnitOfWork
 
 
 class TestApi:
     @staticmethod
     def _get_wallet_id(app, account_id: str) -> str | None:
         with SqlAlchemyUnitOfWork(app.state.database) as uow:
-            wallet = uow.wallet_repository.find_by_account_id(UUID(account_id))
+            wallet_repository = WalletRepositoryImpl(uow.session)
+            wallet = wallet_repository.find_by_account_id(UUID(account_id))
             return str(wallet.id) if wallet is not None else None
 
     def test_healthcheck_returns_ok(self, tmp_path):
